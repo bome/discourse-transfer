@@ -1,0 +1,4 @@
+userid;email;username;hash;password;name
+1;testuser@email.com;testuser1;cfa7583d7fedf09dd79f4803ef782ade;abcdefgabcdefgabcdefgabcdefgabcdefg;Test user 1
+2;testuser2@email.com;testuser2;cfa7583d7fedf09dd79f4803ef782ade;abcdefgabcdefgabcdefgabcdefgabcdefg;Test user 2
+3;testuser3@email.com;testuser3;cfa7583d7fedf09dd79f4803ef782ade;abcdefgabcdefgabcdefgabcdefgabcdefg;Test user 3

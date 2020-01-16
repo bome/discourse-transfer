@@ -1,0 +1,4 @@
+topicid;forumid;username;topic_title;post_time;post_text
+1;6;testuser1;Topic 1;2011-06-30 01:23:53;First Topic
+2;7;testuser2;Topic 2;2006-10-23 04:44:49;Second Topic Description with a [SEMICOLON] here.
+3;7;testuser2;Topic 3;2006-10-23 05:05:52;Third Topic Description[NEWLINE]New paragraph here.
