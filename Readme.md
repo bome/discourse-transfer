@@ -146,7 +146,7 @@ If it passes validation stage but DiscourseTransfer has a problem importing user
 Categories are imported from the file specified by -cf, and all are owned by the admin user specified in -u, we output a mapping from old forum
 category id to new Discourse category id to the file specified by -cm option 
 ```
-DiscourseTransfer -u username -a apiKey -w website -cf categries.csv -cm categries_map.csv 
+DiscourseTransfer -u username -a apiKey -w website -cf categories.csv -cm categories_map.csv 
 ```
 If DiscourseTransfer has a problem importing users then it will exit
 
@@ -155,7 +155,7 @@ If DiscourseTransfer has a problem importing users then it will exit
 Topics are imported from the file specified by -tf, -cm file (from previous step) is required to allow the topics to be put into the 
 correct category, we output a mapping from old forum topic id to new Discourse topic id to the file specified by -tm option 
 ```
-DiscourseTransfer -u username -a apiKey -w website -tf topics.csv -tm topics_map.csv -cm categories_map.csv 
+DiscourseTransfer -u username -a apiKey -w website -tf topics.csv -tm topics_map.csv -cm categories_map.csv -tr topics_redirect_map.csv
 ```
 
 If DiscourseTransfer fails to import any topics it will still continue to completion, this is because issues such as timeouts can make it difficult

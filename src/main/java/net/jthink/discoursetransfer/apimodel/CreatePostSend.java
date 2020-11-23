@@ -7,6 +7,8 @@ public class CreatePostSend
     private String raw;
     private String created_at;
     private boolean skip_validations;
+    /** 1... number of posts in this topic */
+    private Integer reply_to_post_number;
 
     public String getRaw()
     {
@@ -50,5 +52,19 @@ public class CreatePostSend
     {
         this.topic_id = topic_id;
     }
+
+	/**
+	 * @return the reply_to_post_number
+	 */
+	public Integer getReplyToPostNumber() {
+		return reply_to_post_number;
+	}
+
+	/**
+	 * @param reply_to_post_number the reply_to_post_number to set
+	 */
+	public void setReplyToPostNumber(Integer reply_to_post_number) {
+		this.reply_to_post_number = reply_to_post_number;
+	}
 
 }

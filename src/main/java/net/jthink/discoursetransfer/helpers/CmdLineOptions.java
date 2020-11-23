@@ -38,6 +38,9 @@ public class CmdLineOptions
     @Parameter(names="-tm", description="topics map file to output")
     public String topicMapFile;
 
+    @Parameter(names="-tr", description="topics redirect map file to output")
+    public String topicRedirectMapFile;
+
     @Parameter(names="-pf", description="post csv file")
     public String postCsvFile;
 

@@ -41,6 +41,11 @@ public class HttpPostHelper
         }
         website = websiteUrl;
     }
+    
+    public static String getWebsite()
+    {
+    	return website;
+    }
 
     /**
      * For creating topics/post as user

@@ -14,7 +14,7 @@ public class UpdateViewCount
 {
     public static void main(final String[] args) throws Exception
     {
-        List<String> topicsMap = Files.readAllLines(Paths.get("src/main/resources/topics_map.csv"), Charset.forName("utf-8"));
+        List<String> topicsMap = Files.readAllLines(Paths.get("topics_map.csv"), Charset.forName("utf-8"));
         Map<String, String> forumIdDiscourseId= new HashMap<>();
         for (int i = 1; i < topicsMap.size(); i++)
         {
@@ -23,7 +23,7 @@ public class UpdateViewCount
             forumIdDiscourseId.put(pair[0], pair[1]);
         }
 
-        List<String> viewCounts = Files.readAllLines(Paths.get("src/main/resources/topicviews.csv"), Charset.forName("utf-8"));
+        List<String> viewCounts = Files.readAllLines(Paths.get("topicviews.csv"), Charset.forName("utf-8"));
         Map<String, String> forumIdViewCount= new HashMap<>();
         for (int i = 1; i < viewCounts.size(); i++)
         {
@@ -32,7 +32,7 @@ public class UpdateViewCount
             forumIdViewCount.put(pair[0], pair[1]);
         }
 
-        Path viewImportFile = Files.createFile(Paths.get("src/main/resources/viewimport.csv"));
+        Path viewImportFile = Files.createFile(Paths.get("topicviews_import.sql"));
 
         //Now create map from discourse topic id to view count
         for(Map.Entry<String, String> next :forumIdDiscourseId.entrySet())
@@ -46,6 +46,8 @@ public class UpdateViewCount
                             .getBytes(Charset.forName("UTF8")),
                     StandardOpenOption.APPEND);
         }
-        //Create .csv file to import into discourse database
+
+        System.out.println("Created " + viewImportFile.getFileName() + " to be executed in the discourse DB.");
+        //Created .sql file to import into discourse database
     }
 }

@@ -1,14 +1,10 @@
 package net.jthink.discoursetransfer.tasks;
 
-import com.beust.jcommander.Strings;
 import com.google.gson.Gson;
 import net.jthink.discoursetransfer.DiscourseTransfer;
 import net.jthink.discoursetransfer.apimodel.CreatePostResult;
-import net.jthink.discoursetransfer.apimodel.CreatePostSend;
 import net.jthink.discoursetransfer.apimodel.CreateTopicSend;
-import net.jthink.discoursetransfer.csv.CategoryCsv;
 import net.jthink.discoursetransfer.csv.PostCsv;
-import net.jthink.discoursetransfer.csv.UserCsv;
 import net.jthink.discoursetransfer.helpers.HttpPostHelper;
 import net.jthink.discoursetransfer.helpers.TextReplacement;
 import org.apache.http.HttpEntity;
@@ -44,43 +40,56 @@ public class CreateTopic
         String json = gson.toJson(topic);
         DiscourseTransfer.log.severe(userName + ":REQUEST-JSON:" + json);
 
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-
-        HttpPost httpPost = HttpPostHelper.createHttpPost(CREATE_POST_ENDPOINT, userName);
-        httpPost.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
-        HttpResponse response = httpClient.execute(httpPost);
-        int code = response.getStatusLine().getStatusCode();
-
-        if (code==200)
+        while(true)
         {
-            HttpEntity resEntity = response.getEntity();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(resEntity.getContent()));
-            while (reader.ready())
-            {
-                String resultString = reader.readLine();
-                CreatePostResult result = gson.fromJson(resultString, CreatePostResult.class);
-                DiscourseTransfer.log.config("TOPICID:" + result.getTopic_id());
-                return result.getTopic_id();
-            }
-        }
-        else
-        {
-            System.out.println("*****Unable to create topic:"+userName+":"+code);
-            DiscourseTransfer.log.severe("RESPONSE_CODE:" + code + ":REQUEST_JSON:" + json);
-            HttpEntity resEntity = response.getEntity();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(resEntity.getContent()));
-            while (reader.ready())
-            {
-                String resultString = reader.readLine();
-                DiscourseTransfer.log.severe("RESULTS:" + resultString);
-            }
-            return 0;
+	        CloseableHttpClient httpClient = HttpClients.createDefault();
+	
+	        HttpPost httpPost = HttpPostHelper.createHttpPost(CREATE_POST_ENDPOINT, userName);
+	        httpPost.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
+	        HttpResponse response = httpClient.execute(httpPost);
+	        int code = response.getStatusLine().getStatusCode();
+	
+			if (code == 429)
+			{
+				// too many requests
+				System.out.println("Status 429: too many requests... waiting for 30 seconds.");
+				DiscourseTransfer.log.severe("STATUS: 429 Too Many Requests");
+				Thread.sleep(30000);
+				continue;
+			}
+	
+	        if (code==200)
+	        {
+	            HttpEntity resEntity = response.getEntity();
+	            BufferedReader reader = new BufferedReader(new InputStreamReader(resEntity.getContent()));
+	            while (reader.ready())
+	            {
+	                String resultString = reader.readLine();
+	                CreatePostResult result = gson.fromJson(resultString, CreatePostResult.class);
+	                DiscourseTransfer.log.config("TOPICID:" + result.getTopic_id());
+	                return result.getTopic_id();
+	            }
+	        }
+	        else
+	        {
+	            System.out.println("*****Unable to create topic:"+userName+":"+code);
+	            DiscourseTransfer.log.severe("RESPONSE_CODE:" + code + ":REQUEST_JSON:" + json);
+	            HttpEntity resEntity = response.getEntity();
+	            BufferedReader reader = new BufferedReader(new InputStreamReader(resEntity.getContent()));
+	            while (reader.ready())
+	            {
+	                String resultString = reader.readLine();
+	                DiscourseTransfer.log.severe("RESULTS:" + resultString);
+	            }
+	            return 0;
+	        }
+	        break;
         }
         return 0;
     }
 
 
-    public int loadandCreate(HashMap<String, String> fieldNameToFieldMap, Path mapFile) throws Exception
+    public int loadandCreate(HashMap<String, String> fieldNameToFieldMap, Path mapFile, Path redirectMapFile) throws Exception
     {
         if(!fieldNameToFieldMap.containsKey(PostCsv.TOPIC_TITLE.getFieldName()))
         {
@@ -155,6 +164,23 @@ public class CreateTopic
                         new String(originalTopicId + ";" +  discourseTopicId + "\n")
                                 .getBytes(Charset.forName("UTF8")),
                         StandardOpenOption.APPEND);
+            }
+            
+            if (redirectMapFile != null)
+            {
+                if (fieldNameToFieldMap.containsKey(PostCsv.URL.getFieldName()))
+                {
+                	String originalUrl = fieldNameToFieldMap.get(PostCsv.URL.getFieldName());
+                	if (!originalUrl.isEmpty())
+                	{
+						String discourseURL = HttpPostHelper.getWebsite() + "t/" + discourseTopicId;
+						Files.write(redirectMapFile,
+								new String(originalUrl + ";" + discourseURL + "\n").getBytes(Charset.forName("UTF8")),
+								StandardOpenOption.APPEND);
+                	}
+                }
+
+            	            	
             }
         }
         return discourseTopicId;

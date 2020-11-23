@@ -4,6 +4,7 @@ import com.beust.jcommander.Strings;
 import net.jthink.discoursetransfer.csv.UserCsv;
 import net.jthink.discoursetransfer.csv.CategoryCsv;
 import net.jthink.discoursetransfer.helpers.CmdLineOptions;
+import net.jthink.discoursetransfer.helpers.HttpGetHelper;
 import net.jthink.discoursetransfer.helpers.HttpPostHelper;
 import net.jthink.discoursetransfer.helpers.HttpPutHelper;
 import net.jthink.discoursetransfer.tasks.*;
@@ -32,6 +33,9 @@ public class DiscourseTransfer
     //Maps from original topicId to discourse topicId have been imported
     public static Map<Integer, Integer> topicMap    = new LinkedHashMap<Integer, Integer>();
 
+    //Maps from original postId to discourse postId have been imported
+    public static Map<Integer, Integer> postMap    = new LinkedHashMap<Integer, Integer>();
+
     public static void main(final String[] args) throws Exception
     {
         CmdLineOptions options = verifyOptions(args);
@@ -48,10 +52,19 @@ public class DiscourseTransfer
         HttpPutHelper.setApiUsername(options.apiUsername);
         HttpPutHelper.setWebsite(options.website);
 
+        HttpGetHelper.setApiKey(options.apiKey);
+        HttpGetHelper.setApiUsername(options.apiUsername);
+        HttpGetHelper.setWebsite(options.website);
+
         //Add Users
         if(options.usersCsvFile!=null)
         {
-            addUsers(Paths.get(options.usersCsvFile), options.usersMapFile, Paths.get(options.importpassFile), options.delay);
+        	Path importPassFile = null;
+        	if (options.importpassFile != null)
+        	{
+        		importPassFile = Paths.get(options.importpassFile);
+        	}
+            addUsers(Paths.get(options.usersCsvFile), options.usersMapFile, importPassFile, options.delay);
         }
 
         //Add Categories (all created by admin)
@@ -77,14 +90,15 @@ public class DiscourseTransfer
                         categoryMap.put(Integer.parseInt(categoryPair[0]), Integer.parseInt(categoryPair[1]));
                     }
                 }
+            	System.out.println("Loaded " + categoryMap.size() + " previous category ID mappings.");
             }
-            addTopics(Paths.get(options.topicCsvFile), options.topicMapFile, options.delay);
+            addTopics(Paths.get(options.topicCsvFile), options.topicMapFile, options.topicRedirectMapFile, options.delay);
         }
 
         //Add Posts
         if(options.postCsvFile!=null)
         {
-            //if categories were already created form an earlier run we creating mapping based on the
+            //if topics were already created form an earlier run we creating mapping based on the
             //mapping output file
             if(options.topicCsvFile==null)
             {
@@ -97,6 +111,26 @@ public class DiscourseTransfer
                     {
                         topicMap.put(Integer.parseInt(topicPair[0]), Integer.parseInt(topicPair[1]));
                     }
+                }
+            	System.out.println("Loaded " + topicMap.size() + " previous topic ID mappings.");
+            }
+            
+            // also load previous post mapping
+            if (options.postMapFile != null)
+            {
+                Path postMapFile = Paths.get(options.postMapFile);
+                if (postMapFile.toFile().exists())
+                {
+	                List<String> posts = Files.readAllLines(postMapFile, Charset.forName("utf8"));
+	                for(int i=1; i< posts.size(); i++)
+	                {
+	                    String[] postPair =  posts.get(i).split(";");
+	                    if(postPair.length==2)
+	                    {
+	                        postMap.put(Integer.parseInt(postPair[0]), Integer.parseInt(postPair[1]));
+	                    }
+	                }
+	            	System.out.println("Loaded " + postMap.size() + " previous post ID mappings.");
                 }
             }
 
@@ -112,7 +146,7 @@ public class DiscourseTransfer
         CmdLineOptions options = new CmdLineOptions();
         try
         {
-            JCommander parser = new JCommander(options, args);
+            /*JCommander parser =*/ new JCommander(options, args);
         }
         catch(Exception cme)
         {
@@ -508,12 +542,16 @@ public class DiscourseTransfer
             }
             importPassFile = Files.createFile(importPassFile);
         }
+        else
+        {
+        	System.out.println("- WARNING: no password file given. Will create users with random password.");
+        }
 
         //What Data do we have
         String[] fieldNames = users.get(0).split(";");
 
         HashMap<String, String> fieldNameToFieldMap = new HashMap<>();
-        Path mapFile = initMap(map,"originalUserId;discourseUserId");
+        Path mapFile = initMap(map,"originalUserId;discourseUserId", true/*deleteFirst*/);
 
 
         //For each user
@@ -532,7 +570,8 @@ public class DiscourseTransfer
             {
                 fieldNameToFieldMap.put(fieldNames[j], fields[j]);
             }
-            int userId = new CreateUser().loadandCreate(fieldNameToFieldMap, mapFile);
+            CreateUser createUser = new CreateUser(); 
+            int userId = createUser.loadandCreate(fieldNameToFieldMap, mapFile);
             if(userId>0)
             {
                 //If have have hash add to the sql file
@@ -550,9 +589,12 @@ public class DiscourseTransfer
                             StandardOpenOption.APPEND);
                 }
 
-                //https://meta.discourse.org/t/can-you-bypass-the-activation-email/136830
-                new DeactivateUser().deactivate(userId);
-                new ActivateUser().activate(userId);
+                if (!createUser.didUserExist())
+                {
+	                //https://meta.discourse.org/t/can-you-bypass-the-activation-email/136830
+	                new DeactivateUser().deactivate(userId);
+	                new ActivateUser().activate(userId);
+                }
             }
             else
             {
@@ -562,7 +604,7 @@ public class DiscourseTransfer
 
             if(isDelay)
             {
-                Thread.sleep(1000);
+                Thread.sleep(2000);
             }
         }
     }
@@ -580,7 +622,7 @@ public class DiscourseTransfer
         List<String> categories = Files.readAllLines(categoryCsvFile,Charset.forName("iso-8859-1"));
         String[] fieldNames = categories.get(0).split(";");
         HashMap<String, String> fieldNameToFieldMap = new HashMap<>();
-        Path mapFile = initMap(categoryMapFile,"originalCategoryId;discourseCategoryId");
+        Path mapFile = initMap(categoryMapFile,"originalCategoryId;discourseCategoryId", true/*deleteFirst*/);
         for (int i = 1; i < categories.size(); i++)
         {
             String category = categories.get(i);
@@ -605,7 +647,7 @@ public class DiscourseTransfer
 
             if(isDelay)
             {
-                Thread.sleep(1000);
+                Thread.sleep(2000);
             }
         }
     }
@@ -616,13 +658,14 @@ public class DiscourseTransfer
      * @param topicCsvFile
      * @throws Exception
      */
-    public static void addTopics(Path topicCsvFile, String topicsMappingOutput, boolean isDelay) throws Exception
+    public static void addTopics(Path topicCsvFile, String topicsMappingOutput, String topicsRedirectMappingOutput, boolean isDelay) throws Exception
     {
         List<String> topics = Files.readAllLines(topicCsvFile, Charset.forName("utf-8"));
         String[] fieldNames = topics.get(0).split(";");
         HashMap<String, String> fieldNameToFieldMap = new HashMap<>();
         System.out.println("Creating Topics.....");
-        Path mapFile = initMap(topicsMappingOutput,"originalTopicId;discourseTopicId");
+        Path mapFile = initMap(topicsMappingOutput,"originalTopicId;discourseTopicId", false/*deleteFirst*/);
+        Path redirectMapFile = initMap(topicsRedirectMappingOutput,"originalURL;discourseURL", false/*deleteFirst*/);
         for (int i = 1; i < topics.size(); i++)
         {
             String topic = topics.get(i);
@@ -642,7 +685,7 @@ public class DiscourseTransfer
 
                 try
                 {
-                    int result = new CreateTopic().loadandCreate(fieldNameToFieldMap, mapFile);
+                    int result = new CreateTopic().loadandCreate(fieldNameToFieldMap, mapFile, redirectMapFile);
                     if (result <= 0)
                     {
                         System.out.println("*****Unable to create topic:" + topic);
@@ -656,7 +699,7 @@ public class DiscourseTransfer
 
                 if(isDelay)
                 {
-                    Thread.sleep(1000);
+                    Thread.sleep(2000);
                 }
             }
         }
@@ -677,7 +720,7 @@ public class DiscourseTransfer
         String[] fieldNames = posts.get(0).split(";");
         HashMap<String, String> fieldNameToFieldMap = new HashMap<>();
         System.out.println("Creating Posts....");
-        Path mapFile = initMap(map,"originalPostId;discoursePostId");
+        Path mapFile = initMap(map,"originalPostId;discoursePostId", false/*deleteFirst*/);
         for (int i = 1; i <posts.size(); i++)
         {
             String post = posts.get(i);
@@ -709,7 +752,7 @@ public class DiscourseTransfer
 
                 if(isDelay)
                 {
-                    Thread.sleep(1000);
+                    Thread.sleep(2000);
                 }
             }
         }
@@ -722,7 +765,7 @@ public class DiscourseTransfer
      * @return
      * @throws Exception
      */
-    private static Path initMap(String map, String headerText) throws Exception
+    private static Path initMap(String map, String headerText, boolean deleteFirst) throws Exception
     {
         Path mapFile=null;
         if(map!=null)
@@ -730,6 +773,10 @@ public class DiscourseTransfer
             mapFile = Paths.get(map);
             if(Files.exists(mapFile))
             {
+            	if (!deleteFirst)
+            	{
+            		return mapFile;
+            	}
                 Files.delete(mapFile);
             }
             mapFile = Files.createFile(mapFile);

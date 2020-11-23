@@ -1,6 +1,5 @@
 package net.jthink.discoursetransfer.helpers;
 
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 
 import static net.jthink.discoursetransfer.helpers.DiscourseParams.*;
