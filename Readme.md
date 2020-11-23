@@ -2,7 +2,8 @@
 Originally created by Paul Taylor for migrating JForum to Discourse:
 https://bitbucket.org/ijabz/discourse-transfer/src/master/
 
-Updated by Florian Bomers to extend capabilities and used for migrating CM Answers forum to Discourse.
+Updated by Florian Bomers to extend capabilities and used for migrating CM Answers forum to Discourse:
+https://github.com/bome/cmanswers-discourse-transfer
 
 Written in Java and uses Discourse API, has no dependencies on Discourse environment so can be run anywhere, used to import data 
 from csv files into a Discourse installation. The only exception is if want to preserve user passwords then there is one database 
